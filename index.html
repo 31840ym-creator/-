@@ -1,1 +1,415 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>滑舌トレーナー</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho+B1:wght@600;800&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=JetBrains+Mono:wght@700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#0d1117;--panel:#151d28;--panel-2:#1c2634;--line:#2b394a;
+  --fog:#8494a8;--paper:#e9eef4;
+  --hit:#79d8bd;--miss:#ff8f72;--wait:#f0cb74;--lamp:#fff3d8;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  background:var(--ink);color:var(--paper);
+  font-family:"Zen Kaku Gothic New",system-ui,sans-serif;
+  -webkit-font-smoothing:antialiased;
+  display:flex;justify-content:center;
+  padding:0 0 env(safe-area-inset-bottom);
+}
+.app{width:100%;max-width:540px;padding:20px 18px 40px;display:flex;flex-direction:column;gap:16px}
 
+.top{display:flex;align-items:baseline;justify-content:space-between}
+.brand{font-family:"Shippori Mincho B1",serif;font-weight:800;font-size:19px;letter-spacing:.14em}
+.brand span{color:var(--fog);font-family:"Zen Kaku Gothic New",sans-serif;font-weight:500;font-size:11px;letter-spacing:.2em;display:block;margin-top:3px}
+
+.cats{display:flex;gap:7px;overflow-x:auto;padding-bottom:2px;-webkit-overflow-scrolling:touch}
+.cats::-webkit-scrollbar{display:none}
+.cat{
+  flex:none;background:none;border:1px solid var(--line);color:var(--fog);
+  font:500 12.5px/1 "Zen Kaku Gothic New",sans-serif;
+  padding:10px 13px;border-radius:999px;cursor:pointer;white-space:nowrap;
+}
+.cat[aria-pressed="true"]{border-color:var(--lamp);color:var(--lamp)}
+
+.card{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:22px 18px}
+.kanji{color:var(--fog);font-size:13px;letter-spacing:.06em;text-align:center;margin-bottom:16px;line-height:1.7}
+
+.blocks{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+.blk{
+  font-family:"Shippori Mincho B1",serif;font-weight:600;
+  font-size:clamp(20px,5.8vw,27px);line-height:1.15;letter-spacing:.03em;
+  padding:9px 11px;border-radius:11px;
+  background:var(--panel-2);border:1px solid var(--line);color:var(--paper);
+  position:relative;
+  transition:background .18s ease,border-color .18s ease,color .18s ease,transform .18s ease;
+}
+.blk.is-trace{background:rgba(240,203,116,.16);border-color:var(--wait);color:var(--lamp)}
+.blk.is-next{border-color:rgba(240,203,116,.55)}
+.blk.is-hit{background:rgba(121,216,189,.14);border-color:var(--hit);color:var(--hit)}
+.blk.is-miss{background:rgba(255,143,114,.14);border-color:var(--miss);color:var(--miss);transform:translateY(2px)}
+
+.live{
+  margin-top:14px;min-height:20px;text-align:center;
+  color:var(--wait);font-size:12.5px;line-height:1.7;word-break:break-all;opacity:.9;
+}
+.score{display:flex;align-items:flex-end;justify-content:center;gap:10px;margin-top:12px;min-height:50px}
+.num{font-family:"JetBrains Mono",monospace;font-size:46px;line-height:.9;letter-spacing:-.02em}
+.pct{color:var(--fog);font-size:13px;padding-bottom:6px}
+.verdict{text-align:center;color:var(--fog);font-size:13px;margin-top:4px;min-height:20px;line-height:1.6}
+.heard{margin-top:14px;padding-top:14px;border-top:1px dashed var(--line);color:var(--fog);font-size:12.5px;line-height:1.7;text-align:center;word-break:break-all}
+.heard b{color:var(--paper);font-weight:500}
+
+.mic-wrap{display:flex;flex-direction:column;align-items:center;gap:12px}
+.mic{
+  width:118px;height:118px;border-radius:50%;
+  border:1px solid var(--line);background:var(--panel);color:var(--lamp);
+  font:700 15px/1.4 "Zen Kaku Gothic New",sans-serif;cursor:pointer;position:relative;
+}
+.mic:disabled{opacity:.4;cursor:default}
+.mic.is-on{background:rgba(240,203,116,.12);border-color:var(--wait);color:var(--wait)}
+.mic.is-on::after{content:"";position:absolute;inset:-10px;border-radius:50%;border:1px solid var(--wait);opacity:.55;animation:ping 1.5s ease-out infinite}
+@keyframes ping{to{transform:scale(1.22);opacity:0}}
+.mic:focus-visible,.cat:focus-visible,.btn:focus-visible,.tog:focus-visible{outline:2px solid var(--lamp);outline-offset:3px}
+
+.row{display:flex;gap:10px;width:100%}
+.btn{flex:1;background:var(--panel);border:1px solid var(--line);color:var(--paper);font:500 14px/1 "Zen Kaku Gothic New",sans-serif;padding:15px 0;border-radius:12px;cursor:pointer}
+.tog{width:100%;display:flex;align-items:center;justify-content:space-between;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px;color:var(--paper);cursor:pointer;font:500 14px/1.4 "Zen Kaku Gothic New",sans-serif;text-align:left}
+.tog small{display:block;color:var(--fog);font-size:11.5px;font-weight:400;margin-top:3px}
+.dot{width:38px;height:22px;border-radius:999px;background:var(--line);position:relative;flex:none;transition:background .2s}
+.dot::after{content:"";position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:var(--fog);transition:transform .2s,background .2s}
+.tog[aria-pressed="true"] .dot{background:rgba(240,203,116,.35)}
+.tog[aria-pressed="true"] .dot::after{transform:translateX(16px);background:var(--wait)}
+
+.map h2{font-size:12px;letter-spacing:.18em;color:var(--fog);font-weight:500;margin-bottom:14px}
+.bar{display:grid;grid-template-columns:34px 1fr 34px;align-items:center;gap:10px;margin-bottom:9px}
+.bar i{font-style:normal;font-family:"Shippori Mincho B1",serif;font-size:15px}
+.track{height:7px;border-radius:99px;background:var(--panel-2);overflow:hidden}
+.fill{height:100%;border-radius:99px;background:var(--hit);transition:width .5s ease,background .5s ease}
+.bar em{font-style:normal;font-family:"JetBrains Mono",monospace;font-size:11px;color:var(--fog);text-align:right}
+.empty{color:var(--fog);font-size:12.5px;line-height:1.7}
+.note{color:var(--fog);font-size:11.5px;line-height:1.8;text-align:center}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header class="top">
+    <div class="brand">滑舌トレーナー<span>SAY IT CLEARLY</span></div>
+  </header>
+
+  <div class="cats" id="cats" role="group" aria-label="種類"></div>
+
+  <section class="card">
+    <p class="kanji" id="kanji">読み込み中</p>
+    <div class="blocks" id="blocks"></div>
+    <p class="live" id="live"></p>
+    <div class="score"><span class="num" id="num">—</span><span class="pct" id="pct"></span></div>
+    <p class="verdict" id="verdict">マイクを押して、はっきり読み上げてください</p>
+    <p class="heard" id="heard" hidden></p>
+  </section>
+
+  <div class="mic-wrap">
+    <button class="mic" id="mic">読み上げる</button>
+    <div class="row">
+      <button class="btn" id="again">もう一度</button>
+      <button class="btn" id="next">次のお題</button>
+    </div>
+    <button class="tog" id="hands" aria-pressed="false">
+      <span>ハンズフリー<small>お題を読み上げ→自動で録音→採点を音声で返答</small></span>
+      <span class="dot"></span>
+    </button>
+  </div>
+
+  <section class="card map">
+    <h2>音の崩れマップ</h2>
+    <div id="mapBody"><p class="empty">読み上げるほど、どの行が崩れやすいか溜まっていきます。</p></div>
+  </section>
+
+  <p class="note" id="note"></p>
+</div>
+
+<script>
+/* ================= お題 ================= */
+const CATS = [
+  {id:"tongue", name:"早口言葉"},
+  {id:"daily",  name:"あいさつ・電話"},
+  {id:"work",   name:"点呼・無線"},
+  {id:"number", name:"数字・住所"},
+  {id:"long",   name:"長文・アナウンス"}
+];
+
+const PHRASES = [
+  /* --- 早口言葉 --- */
+  {c:"tongue", text:"生麦生米生卵", seg:[["生麦","なまむぎ"],["生米","なまごめ"],["生卵","なまたまご"]]},
+  {c:"tongue", text:"赤巻紙青巻紙黄巻紙", seg:[["赤巻紙","あかまきがみ"],["青巻紙","あおまきがみ"],["黄巻紙","きまきがみ"]]},
+  {c:"tongue", text:"バスガス爆発", seg:[["バス","ばす"],["ガス","がす"],["爆発","ばくはつ"]]},
+  {c:"tongue", text:"右目右耳右耳右目", seg:[["右目","みぎめ"],["右耳","みぎみみ"],["右耳","みぎみみ"],["右目","みぎめ"]]},
+  {c:"tongue", text:"新春シャンソンショー", seg:[["新春","しんしゅん"],["シャンソン","しゃんそん"],["ショー","しょー"]]},
+  {c:"tongue", text:"東京特許許可局", seg:[["東京","とうきょう"],["特許","とっきょ"],["許可局","きょかきょく"]]},
+  {c:"tongue", text:"隣の客はよく柿食う客だ", seg:[["隣の","となりの"],["客は","きゃくは"],["よく","よく"],["柿食う","かきくう"],["客だ","きゃくだ"]]},
+  {c:"tongue", text:"この釘は引き抜きにくい釘だ", seg:[["この","この"],["釘は","くぎは"],["引き抜きにくい","ひきぬきにくい"],["釘だ","くぎだ"]]},
+  {c:"tongue", text:"打者一斉に走者一掃", seg:[["打者","だしゃ"],["一斉に","いっせいに"],["走者","そうしゃ"],["一掃","いっそう"]]},
+  {c:"tongue", text:"除雪車除雪作業中", seg:[["除雪車","じょせつしゃ"],["除雪","じょせつ"],["作業中","さぎょうちゅう"]]},
+  {c:"tongue", text:"坊主が屏風に上手に坊主の絵を描いた", seg:[["坊主が","ぼうずが"],["屏風に","びょうぶに"],["上手に","じょうずに"],["坊主の","ぼうずの"],["絵を","えを"],["描いた","かいた"]]},
+  {c:"tongue", text:"空虚な九州空港の究極高級航空機", seg:[["空虚な","くうきょな"],["九州","きゅうしゅう"],["空港の","くうこうの"],["究極","きゅうきょく"],["高級","こうきゅう"],["航空機","こうくうき"]]},
+
+  /* --- あいさつ・電話 --- */
+  {c:"daily", text:"おはようございます、本日もよろしくお願いします", seg:[["おはようございます","おはようございます"],["本日も","ほんじつも"],["よろしく","よろしく"],["お願いします","おねがいします"]]},
+  {c:"daily", text:"お世話になっております、配送の担当です", seg:[["お世話に","おせわに"],["なっております","なっております"],["配送の","はいそうの"],["担当です","たんとうです"]]},
+  {c:"daily", text:"恐れ入りますが、もう一度お願いできますでしょうか", seg:[["恐れ入りますが","おそれいりますが"],["もう一度","もういちど"],["お願い","おねがい"],["できますでしょうか","できますでしょうか"]]},
+  {c:"daily", text:"申し訳ございません、少々お待ちいただけますか", seg:[["申し訳","もうしわけ"],["ございません","ございません"],["少々","しょうしょう"],["お待ち","おまち"],["いただけますか","いただけますか"]]},
+  {c:"daily", text:"承知いたしました、確認して折り返しご連絡します", seg:[["承知","しょうち"],["いたしました","いたしました"],["確認して","かくにんして"],["折り返し","おりかえし"],["ご連絡します","ごれんらくします"]]},
+  {c:"daily", text:"本日はお時間をいただきありがとうございました", seg:[["本日は","ほんじつは"],["お時間を","おじかんを"],["いただき","いただき"],["ありがとうございました","ありがとうございました"]]},
+  {c:"daily", text:"はじめまして、担当が変わりましたのでご挨拶に伺いました", seg:[["はじめまして","はじめまして"],["担当が","たんとうが"],["変わりましたので","かわりましたので"],["ご挨拶に","ごあいさつに"],["伺いました","うかがいました"]]},
+
+  /* --- 点呼・無線 --- */
+  {c:"work", text:"出発前点呼、体調異常なし、飲酒なし", seg:[["出発前","しゅっぱつまえ"],["点呼","てんこ"],["体調","たいちょう"],["異常なし","いじょうなし"],["飲酒なし","いんしゅなし"]]},
+  {c:"work", text:"積み込み完了、これより出発します", seg:[["積み込み","つみこみ"],["完了","かんりょう"],["これより","これより"],["出発します","しゅっぱつします"]]},
+  {c:"work", text:"渋滞のため到着が三十分ほど遅れます", seg:[["渋滞のため","じゅうたいのため"],["到着が","とうちゃくが"],["三十分ほど","さんじゅっぷんほど"],["遅れます","おくれます"]]},
+  {c:"work", text:"荷降ろし完了、伝票を受領しました", seg:[["荷降ろし","におろし"],["完了","かんりょう"],["伝票を","でんぴょうを"],["受領しました","じゅりょうしました"]]},
+  {c:"work", text:"運行終了、車両点検異常ありません", seg:[["運行","うんこう"],["終了","しゅうりょう"],["車両","しゃりょう"],["点検","てんけん"],["異常ありません","いじょうありません"]]},
+  {c:"work", text:"現在地は東名高速の上り、休憩に入ります", seg:[["現在地は","げんざいちは"],["東名高速の","とうめいこうそくの"],["上り","のぼり"],["休憩に","きゅうけいに"],["入ります","はいります"]]},
+
+  /* --- 数字・住所 --- */
+  {c:"number", text:"納品先は市内の第三倉庫、七番ゲートです", seg:[["納品先は","のうひんさきは"],["市内の","しないの"],["第三倉庫","だいさんそうこ"],["七番","ななばん"],["ゲートです","げーとです"]]},
+  {c:"number", text:"パレット十二枚、総重量は千八百キロです", seg:[["パレット","ぱれっと"],["十二枚","じゅうにまい"],["総重量は","そうじゅうりょうは"],["千八百キロです","せんはっぴゃくきろです"]]},
+  {c:"number", text:"到着予定は午後三時四十分頃になります", seg:[["到着予定は","とうちゃくよていは"],["午後","ごご"],["三時","さんじ"],["四十分頃に","よんじゅっぷんごろに"],["なります","なります"]]},
+  {c:"number", text:"伝票番号は八九六の四三、一箱不足しています", seg:[["伝票番号は","でんぴょうばんごうは"],["八九六の","はちきゅうろくの"],["四三","よんさん"],["一箱","ひとはこ"],["不足しています","ふそくしています"]]},
+  {c:"number", text:"住所は本町一丁目二番三号、青い建物の裏手です", seg:[["住所は","じゅうしょは"],["本町","ほんまち"],["一丁目","いっちょうめ"],["二番三号","にばんさんごう"],["青い建物の","あおいたてもののの"],["裏手です","うらてです"]]},
+
+  /* --- 長文・アナウンス --- */
+  {c:"long", text:"次の停留所は、市民病院前、市民病院前でございます", seg:[["次の","つぎの"],["停留所は","ていりゅうじょは"],["市民病院前","しみんびょういんまえ"],["市民病院前","しみんびょういんまえ"],["でございます","でございます"]]},
+  {c:"long", text:"お忘れ物のないよう、今一度お手回り品をお確かめください", seg:[["お忘れ物の","おわすれもののの"],["ないよう","ないよう"],["今一度","いまいちど"],["お手回り品を","おてまわりひんを"],["お確かめください","おたしかめください"]]},
+  {c:"long", text:"本日は晴天なり、風速は毎秒三メートル、視界は良好です", seg:[["本日は","ほんじつは"],["晴天なり","せいてんなり"],["風速は","ふうそくは"],["毎秒三メートル","まいびょうさんめーとる"],["視界は","しかいは"],["良好です","りょうこうです"]]},
+  {c:"long", text:"만…", seg:[["","" ]], skip:true},
+  {c:"long", text:"ただいまより、安全運転講習を始めさせていただきます", seg:[["ただいまより","ただいまより"],["安全運転","あんぜんうんてん"],["講習を","こうしゅうを"],["始めさせて","はじめさせて"],["いただきます","いただきます"]]},
+  {c:"long", text:"雨天のため路面が滑りやすくなっております、車間距離を十分にお取りください", seg:[["雨天のため","うてんのため"],["路面が","ろめんが"],["滑りやすく","すべりやすく"],["なっております","なっております"],["車間距離を","しゃかんきょりを"],["十分に","じゅうぶんに"],["お取りください","おとりください"]]}
+].filter(p=>!p.skip);
+
+/* ================= 行 ================= */
+const GYO = [
+  ["あ行","あいうえお"],["か行","かきくけこ"],["が行","がぎぐげご"],
+  ["さ行","さしすせそ"],["ざ行","ざじずぜぞ"],["た行","たちつてと"],["だ行","だぢづでど"],
+  ["な行","なにぬねの"],["は行","はひふへほ"],["ば行","ばびぶべぼ"],["ぱ行","ぱぴぷぺぽ"],
+  ["ま行","まみむめも"],["や行","やゆよ"],["ら行","らりるれろ"],["わ行","わをん"]
+];
+const gyoOf = ch => (GYO.find(g=>g[1].includes(ch))||[null])[0];
+
+/* ================= 状態 ================= */
+let cat = "tongue", cur = null;
+let wantListening = false, finished = true, handsFree = false;
+let finalText = "", interimText = "", lastVoice = 0, startedAt = 0;
+let silenceTimer = null, autoTimer = null;
+const stats = loadStats();
+
+const $ = id => document.getElementById(id);
+const kanjiEl=$("kanji"), blocksEl=$("blocks"), liveEl=$("live"),
+      numEl=$("num"), pctEl=$("pct"), verdictEl=$("verdict"),
+      heardEl=$("heard"), micEl=$("mic"), noteEl=$("note");
+
+const SILENCE_MS = 2200;   // 喋り終わってから待つ時間
+const MAX_MS = 25000;      // 最長録音時間
+
+/* ================= 音声認識 ================= */
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+let rec = null;
+if(SR){
+  rec = new SR();
+  rec.lang = "ja-JP";
+  rec.interimResults = true;   // 途中経過をもらう
+  rec.continuous = true;       // 勝手に切らない
+  rec.maxAlternatives = 1;
+
+  rec.onresult = e => {
+    let fin = "", itm = "";
+    for(let i=0;i<e.results.length;i++){
+      const t = e.results[i][0].transcript;
+      if(e.results[i].isFinal) fin += t; else itm += t;
+    }
+    finalText = fin; interimText = itm;
+    lastVoice = Date.now();
+    trace(fin + itm);
+  };
+  rec.onerror = e => {
+    if(e.error === "no-speech") return;          // 無音は無視して継続
+    if(e.error === "aborted") return;
+    wantListening = false; stopUI();
+    verdictEl.textContent = e.error === "not-allowed"
+      ? "マイクが許可されていません。ブラウザの設定で許可してください。"
+      : "うまく聞き取れませんでした。もう一度どうぞ。";
+  };
+  rec.onend = () => {
+    // モバイルは勝手に切れるので、まだ喋り終わっていなければ再開
+    if(wantListening && !finished && Date.now()-startedAt < MAX_MS){
+      try{ rec.start(); return; }catch(err){}
+    }
+    stopUI();
+  };
+}else{
+  micEl.disabled = true;
+  verdictEl.textContent = "このブラウザは音声認識に対応していません。Android の Chrome で開いてください。";
+}
+
+function preflight(){
+  if(location.protocol === "file:" || !window.isSecureContext){
+    micEl.disabled = true;
+    verdictEl.textContent = "https のURLから開かないとマイクが使えません。";
+  }
+}
+
+/* ================= 文字合わせ ================= */
+function normalize(s){
+  return s.replace(/[\s、。・,.!?！？「」]/g,"")
+          .replace(/[Ａ-Ｚａ-ｚ０-９]/g,c=>String.fromCharCode(c.charCodeAt(0)-0xFEE0))
+          .toLowerCase();
+}
+const kataToHira = s => s.replace(/[\u30a1-\u30f6]/g,c=>String.fromCharCode(c.charCodeAt(0)-0x60));
+
+/* 順番になぞる（途中経過用）：頭から何個目まで届いたか */
+function reached(heard){
+  const h = normalize(heard), hH = kataToHira(h);
+  let cursor = 0, n = 0;
+  for(const [kanji,kana] of cur.seg){
+    const k = normalize(kanji), y = kataToHira(normalize(kana));
+    let idx = h.indexOf(k, cursor), len = k.length;
+    if(idx < 0){ idx = hH.indexOf(y, cursor); len = y.length; }
+    if(idx >= 0){ n++; cursor = idx + len; } else break;
+  }
+  return n;
+}
+/* 採点用：飛ばされた語も個別に判定 */
+function matchAll(heard){
+  const h = normalize(heard), hH = kataToHira(h);
+  let cursor = 0;
+  return cur.seg.map(([kanji,kana])=>{
+    const k = normalize(kanji), y = kataToHira(normalize(kana));
+    let idx = h.indexOf(k, cursor), len = k.length;
+    if(idx < 0){ idx = hH.indexOf(y, cursor); len = y.length; }
+    if(idx >= 0){ cursor = idx + len; return true; }
+    return false;
+  });
+}
+
+/* ================= リアルタイム表示 ================= */
+function trace(heard){
+  const n = reached(heard);
+  [...blocksEl.children].forEach((el,i)=>{
+    el.className = "blk" + (i < n ? " is-trace" : (i === n ? " is-next" : ""));
+  });
+  liveEl.textContent = heard || "";
+  if(n === cur.seg.length){                 // 最後まで届いたら少しだけ待って締める
+    clearTimeout(silenceTimer);
+    silenceTimer = setTimeout(finish, 700);
+  }
+}
+
+/* ================= 録音制御 ================= */
+function startListen(){
+  if(!rec || wantListening) return;
+  wantListening = true; finished = false;
+  finalText = ""; interimText = "";
+  lastVoice = startedAt = Date.now();
+  micEl.classList.add("is-on");
+  micEl.textContent = "聞いています";
+  verdictEl.textContent = "どうぞ。話し終わってしばらくすると自動で採点します";
+  liveEl.textContent = "";
+  numEl.textContent = "—"; numEl.style.color = "var(--paper)"; pctEl.textContent = "";
+  heardEl.hidden = true;
+  [...blocksEl.children].forEach((el,i)=>{ el.className = "blk" + (i===0?" is-next":""); });
+  try{ rec.start(); }catch(e){}
+  clearInterval(silenceTimer);
+  silenceTimer = setInterval(()=>{
+    if(finished) return;
+    const quiet = Date.now() - lastVoice;
+    const spoken = (finalText + interimText).length > 0;
+    if(spoken && quiet > SILENCE_MS) finish();
+    else if(Date.now() - startedAt > MAX_MS) finish();
+  }, 200);
+}
+function finish(){
+  if(finished) return;
+  finished = true; wantListening = false;
+  clearInterval(silenceTimer); clearTimeout(silenceTimer);
+  try{ rec.stop(); }catch(e){}
+  stopUI();
+  const heard = (finalText + interimText).trim();
+  if(!heard){ verdictEl.textContent = "声が拾えませんでした。もう一度どうぞ。"; return; }
+  render(matchAll(heard), heard);
+}
+function stopUI(){
+  wantListening = false;
+  micEl.classList.remove("is-on");
+  micEl.textContent = "読み上げる";
+}
+
+/* ================= 採点表示 ================= */
+function render(res, heard){
+  const total = cur.seg.reduce((n,s)=>n+s[1].length,0);
+  const ok = cur.seg.reduce((n,s,i)=>n+(res[i]?s[1].length:0),0);
+  const score = Math.round(ok/total*100);
+
+  [...blocksEl.children].forEach((el,i)=>{
+    el.className = "blk " + (res[i] ? "is-hit" : "is-miss");
+  });
+  liveEl.textContent = "";
+
+  numEl.textContent = score; pctEl.textContent = "点";
+  numEl.style.color = score>=90?"var(--hit)":score>=60?"var(--wait)":"var(--miss)";
+
+  const missed = cur.seg.filter((s,i)=>!res[i]).map(s=>s[1]);
+  verdictEl.textContent = score===100 ? "完璧です。きれいに通りました。"
+    : missed.length ? "崩れたのは「"+missed.join("」「")+"」"
+    : "おおむね伝わっています。";
+
+  heardEl.hidden = false;
+  heardEl.innerHTML = "聞こえた音　<b>"+heard+"</b>";
+
+  recordStats(res); drawMap();
+
+  if(handsFree){
+    speak(score>=90 ? score+"点。きれいです。" : score+"点。"+(missed[0]?missed[0]+"、が崩れました。":""), ()=>{
+      autoTimer = setTimeout(()=>{ nextPhrase(); speak(cur.text, startListen); }, 700);
+    });
+  }
+}
+
+/* ================= 統計 ================= */
+function loadStats(){ try{ return JSON.parse(localStorage.getItem("katsuzetsu")||"{}"); }catch(e){ return {}; } }
+function saveStats(){ try{ localStorage.setItem("katsuzetsu", JSON.stringify(stats)); }catch(e){} }
+function recordStats(res){
+  cur.seg.forEach(([,kana],i)=>{
+    for(const ch of kana){
+      const g = gyoOf(ch); if(!g) continue;
+      stats[g] = stats[g] || {ok:0,all:0};
+      stats[g].all++; if(res[i]) stats[g].ok++;
+    }
+  });
+  saveStats();
+}
+function drawMap(){
+  const rows = Object.entries(stats).filter(([,v])=>v.all>=4)
+    .map(([g,v])=>({g, rate:v.ok/v.all})).sort((a,b)=>a.rate-b.rate).slice(0,8);
+  const body = $("mapBody");
+  if(!rows.length){ body.innerHTML = '<p class="empty">読み上げるほど、どの行が崩れやすいか溜まっていきます。</p>'; return; }
+  body.innerHTML = rows.map(r=>{
+    const pc = Math.round(r.rate*100);
+    const col = pc>=90?"var(--hit)":pc>=70?"var(--wait)":"var(--miss)";
+    return '<div class="bar"><i>'+r.g+'</i><div class="track"><div class="fill" style="width:'+pc+'%;background:'+col+'"></div></div><em>'+pc+'</em></div>';
+  }).join("");
+}
+
+/* ================= お題 ================= */
+function nextPhrase(){
+  const pool = PHRASES.filter(p=>p.c===cat);
+  let p; do{ p = pool[Math.floor(Math.random()*pool.length)]; }while(pool.length>1 && p===cur);
+  cur = p;
+  kanjiEl.textContent = p.text;
+  blocksEl.innerHTML = p.seg.map(s=>'<span class="blk">'+s[1]+'</span>').join("");
+  liveEl.textContent = "";
+  numEl.textContent = "—"; numEl.style.color="var(--paper)"; pctEl.textCon
