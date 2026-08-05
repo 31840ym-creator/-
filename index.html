@@ -412,4 +412,42 @@ function nextPhrase(){
   kanjiEl.textContent = p.text;
   blocksEl.innerHTML = p.seg.map(s=>'<span class="blk">'+s[1]+'</span>').join("");
   liveEl.textContent = "";
-  numEl.textContent = "—"; numEl.style.color="var(--paper)"; pctEl.textCon
+  numEl.textContent = "—"; numEl.style.color="var(--paper)"; pctEl.textContent="";
+  verdictEl.textContent = "マイクを押して、はっきり読み上げてください";
+  heardEl.hidden = true;
+}
+function speak(text, done){
+  if(!window.speechSynthesis){ done && done(); return; }
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = "ja-JP"; u.rate = 1.0;
+  u.onend = ()=> done && done();
+  speechSynthesis.speak(u);
+}
+
+/* ================= UI ================= */
+$("cats").innerHTML = CATS.map((c,i)=>
+  '<button class="cat" data-c="'+c.id+'" aria-pressed="'+(i===0)+'">'+c.name+'</button>').join("");
+document.querySelectorAll(".cat").forEach(b=>{
+  b.addEventListener("click", ()=>{
+    cat = b.dataset.c;
+    document.querySelectorAll(".cat").forEach(x=>x.setAttribute("aria-pressed", x===b));
+    nextPhrase();
+  });
+});
+micEl.addEventListener("click", ()=>{ if(wantListening) finish(); else startListen(); });
+$("again").addEventListener("click", ()=>{ clearTimeout(autoTimer); startListen(); });
+$("next").addEventListener("click", ()=>{ clearTimeout(autoTimer); nextPhrase(); });
+$("hands").addEventListener("click", ()=>{
+  handsFree = !handsFree;
+  $("hands").setAttribute("aria-pressed", handsFree);
+  clearTimeout(autoTimer);
+  if(handsFree) speak("ハンズフリーを始めます。"+cur.text, startListen);
+  else speechSynthesis.cancel();
+});
+
+nextPhrase(); drawMap();
+if(SR) preflight();
+noteEl.textContent = "音声認識は通信を使います。走行前に設定してから始めてください。";
+</script>
+</body>
+</html>
